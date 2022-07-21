@@ -103,9 +103,9 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	var input struct {
-		Title   string   `json:"title"`
-		Year    int32    `json:"year"`
-		Runtime int32    `json:"runtime"`
+		Title   *string   `json:"title"`
+		Year    *int32    `json:"year"`
+		Runtime *int32    `json:"runtime"`
 		Genres  []string `json:"genres"`
 	}
 
@@ -115,10 +115,28 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	movie.Title = input.Title
-	movie.Year = input.Year
-	movie.Runtime = input.Runtime
-	movie.Genres = input.Genres
+	// If the input.Title value is nil then we know that no corresponding "title"
+	// key/value pair was provided in the JSON request body. So we move on and leave
+	// the movie record unchanged. Otherwise, we update the movie record with the new title
+	// value. Importantly, because input.Title is a now a pointer to a string, we need
+	// to deference the pointer using * operator to get the underlying value
+	// before assigning it to our movie record.
+	if input.Title != nil {
+		movie.Title = *input.Title
+	}
+
+	if input.Year != nil {
+		movie.Year = *input.Year
+	}
+
+	if input.Runtime != nil {
+		movie.Runtime = *input.Runtime
+	}
+
+	if input.Genres != nil {
+		movie.Genres = input.Genres
+	}
+
 
 	v := validator.New()
 
@@ -129,7 +147,12 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 
 	err = app.models.Movies.Update(movie)
 	if err != nil {
-		app.serverErrorResponse(w, r, err)
+		switch {
+		case errors.Is(err, data.ErrEditConflict):
+			app.editConflictResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
 		return
 	}
 
