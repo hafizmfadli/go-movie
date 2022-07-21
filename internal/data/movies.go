@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/hafizmfadli/go-movie/internal/validator"
@@ -139,4 +140,59 @@ func (m MovieModel) Delete(id int64) error {
 	}
 	
 	return nil
+}
+
+func (m MovieModel) GetAll(title string, genres []string, filters Filters) ([]*Movie, Metadata, error) {
+	
+	// notice that we also include a secondary sort on the movie ID to ensure a
+	// consistent ordering.
+	query := fmt.Sprintf(`
+	SELECT count(*) OVER(), id, created_at, title, year, runtime, genres, version
+	FROM movies
+	WHERE (to_tsvector('simple', title) @@ plainto_tsquery('simple', $1) OR $1 = '')
+	AND (genres @> $2 OR $2 = '{}')
+	ORDER BY %s %s, id ASC
+	LIMIT $3 OFFSET $4`, filters.sortColumn(), filters.sortDirection())
+
+	args := []interface{}{title, pq.Array(genres), filters.limit(), filters.offset()}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3 * time.Second)
+	defer cancel()
+
+	rows, err := m.DB.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, Metadata{}, err
+	}
+	defer rows.Close()
+
+	movies := []*Movie{}
+	totalRecords := 0
+
+	for rows.Next() {
+		var m Movie
+
+		err = rows.Scan(
+			&totalRecords,
+			&m.ID, 
+			&m.CreatedAt, 
+			&m.Title, 
+			&m.Year, 
+			&m.Runtime, 
+			pq.Array(&m.Genres), 
+			&m.Version)
+		
+		if err != nil {
+			return nil, Metadata{}, err
+		}
+		
+		movies = append(movies, &m)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, Metadata{}, err
+	}
+
+	metadata := calculateMetadata(totalRecords, filters.Page, filters.PageSize)
+
+	return movies, metadata, nil
 }
