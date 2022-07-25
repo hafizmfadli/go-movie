@@ -5,10 +5,12 @@ import (
 	"database/sql"
 	"flag"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/hafizmfadli/go-movie/internal/data"
 	"github.com/hafizmfadli/go-movie/internal/jsonlog"
+	"github.com/hafizmfadli/go-movie/internal/mailer"
 	_ "github.com/lib/pq"
 )
 
@@ -40,6 +42,15 @@ type config struct {
 		burst int
 		enabled bool
 	}
+
+	// smtp struct hold smtp configuration
+	smtp struct {
+		host string
+		port int
+		username string
+		password string
+		sender string
+	}
 }
 
 // application struct hold the dependencies for our HTTP handlers, helpers, and middleware.
@@ -47,6 +58,9 @@ type application struct {
 	config config
 	logger *jsonlog.Logger
 	models data.Models
+	mailer mailer.Mailer
+	// sync.WaitGroup is used to coordinate the graceful shutdown and our background goroutine
+	wg sync.WaitGroup
 }
 
 func main(){
@@ -63,6 +77,12 @@ func main(){
 	flag.Float64Var(&cfg.limiter.rps, "limiter-rps", 2, "Rate limiter maximum request per seocnd")
 	flag.IntVar(&cfg.limiter.burst, "limiter-burst", 4, "Rate limiter maximum burst")
 	flag.BoolVar(&cfg.limiter.enabled, "limiter-enabled", true, "Enable rate limiter")
+	flag.StringVar(&cfg.smtp.host, "smtp-host", "127.0.0.1", "SMTP host")
+	flag.IntVar(&cfg.smtp.port, "smtp-port", 1025, "SMTP port")
+	flag.StringVar(&cfg.smtp.username, "smtp-username", "hafiz", "SMTP username")
+	flag.StringVar(&cfg.smtp.password, "smtp-password", "pa55word", "SMTP password")
+	flag.StringVar(&cfg.smtp.sender, "smtp-sender", "Netflix <no-reply@netflix.hafizmfadli.net>", "SMTP sender")
+
 	flag.Parse()
 
 	// Initialize a new jsonlog.Logger kwhich writes any messages *at or above* the INFO
@@ -81,6 +101,7 @@ func main(){
 		config: cfg,
 		logger: logger,
 		models: data.NewModels(db),
+		mailer: mailer.New(cfg.smtp.host, cfg.smtp.port, cfg.smtp.username, cfg.smtp.password, cfg.smtp.sender),
 	}
 
 	err = app.serve()
