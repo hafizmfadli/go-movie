@@ -59,3 +59,20 @@ func (app *application) editConflictResponse(w http.ResponseWriter, r *http.Requ
 func (app *application) rateLimitExceededResponse(w http.ResponseWriter, r *http.Request) {
 	app.errorResponse(w, r, http.StatusTooManyRequests, http.StatusText(http.StatusTooManyRequests))
 }
+
+// invalidCredentialsResponse will be used to send a 401 Unauthorized status code with JSON formatted.
+// This error helper is used when credential that provided by client is invalid
+func (app *application) invalidCredentialsResponse(w http.ResponseWriter, r *http.Request) {
+	message := "invalid authentication credentials"
+	app.errorResponse(w, r, http.StatusUnauthorized, message)
+}
+
+// invalidCredentialsResponse will be used to send a 401 Unauthorized status code with JSON formatted.
+// This error helper is used when authentication token that provided by client is invalid.
+func (app *application) invalidAuthenticationTokenResponse(w http.ResponseWriter, r *http.Request) {
+	// Including a "WWW-Authenticate: Bearer" header here to help inform or remind the client
+	// that we expect to authenticate using a bearer token.
+	w.Header().Set("WWW-Authenticate", "Bearer")
+	message := "invalid or missing authnetication token"
+	app.errorResponse(w, r, http.StatusUnauthorized, message)
+}
