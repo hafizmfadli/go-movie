@@ -33,6 +33,10 @@ type Models struct {
 		DeleteAllForUser(scope string, userID int64) error
 		New(userID int64, ttl time.Duration, scope string) (*Token, error)
 	}
+	Permissions interface {
+		GetAllForUser(userID int64) (Permissions, error)
+		AddForUser(userID int64, code...string) error
+	}
 }
 
 // NewModels return a Models struct
@@ -41,5 +45,6 @@ func NewModels(db *sql.DB) Models {
 		Movies: MovieModel{DB: db},
 		Users: UserModel{DB: db},
 		Tokens: TokenModel{DB: db},
+		Permissions: PermissionModel{DB: db},
 	}
 }

@@ -76,3 +76,22 @@ func (app *application) invalidAuthenticationTokenResponse(w http.ResponseWriter
 	message := "invalid or missing authnetication token"
 	app.errorResponse(w, r, http.StatusUnauthorized, message)
 }
+
+// authenticationRequiredResponse will be used to send a 401 Unauthorized status code with JSON formatted.
+// This error helper is used when the client is not authenticated yet
+func (app *application) authenticationRequiredResponse(w http.ResponseWriter, r *http.Request) {
+	message := "you must be authenticated to access this resource"
+	app.errorResponse(w, r, http.StatusUnauthorized, message)
+}
+
+// inactiveAccountResponse will be used to send a 403 Forbidden status code with JSON formatted.
+func (app *application) inactiveAccountResponse(w http.ResponseWriter, r *http.Request) {
+	message := "your user account must be activated to access this resource"
+	app.errorResponse(w, r, http.StatusForbidden, message)
+}
+
+// inactiveAccountResponse will be used to send a 403 Forbidden status code with JSON formatted.
+func (app *application) notPermittedResponse(w http.ResponseWriter, r *http.Request) {
+	message := "your user account doesn't have the necessary permissions to access this resource"
+	app.errorResponse(w, r, http.StatusForbidden, message)
+}
