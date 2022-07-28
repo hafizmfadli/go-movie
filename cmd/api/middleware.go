@@ -246,3 +246,61 @@ func (app *application) requirePermission(code string, next http.HandlerFunc) ht
 
 	return app.requireActivatedUser(fn)
 }
+
+func (app *application) enableCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Specifically, we want the middleware to check if the value of the
+		// request "Origin" header is an exact, case-sensitive, match for one of
+		// our trusted origins. If there is a match, then we should set an
+		// "Access-Control-Allow-Origin" response header which reflects back
+		// the value of the request's "Origin" header. Otherwise, we should allow
+		// the request to proceed as normal without setting an "Access-Control-Allow-Origin"
+		// response header. In turn, that means any cross-origin response will be blocked
+		// by a web browser.
+		// 
+		// A side effect of this that the response wil be different depending on the origin that
+		// the request is coming from. Specifically, the value of the "Access-Control-Allow-Origin"
+		// header may be different in the response, or it may not even be included at all.
+		// 
+		// So because of this we should make sure to always set a Vary: Origin response header to
+		// warn any caches that the response may be different. This is actually really important, and it
+		// can be the cause of subtle bugs like this (https://textslashplain.com/2018/08/02/cors-and-vary/) 
+		// one if you forget to do it. As a rule of thumb:
+		// 
+		// -------------------------------------------------------------------------------------------
+		// If your code makes a decision about what to return based on the content of a request header,
+		// you should include that header name in your Vary response header — even if the request
+		// didn’t include that header.
+		// -------------------------------------------------------------------------------------------
+		w.Header().Add("Vary", "Origin")
+
+		// Handle preflight request. Response will be different depending on whether or not
+		// this header exists in the request
+		w.Header().Add("Vary", "Access-Control-Request-Method")
+
+		origin := r.Header.Get("Origin")
+
+		if origin != "" {
+			for i := range app.config.cors.trustedOrigins {
+				if origin == app.config.cors.trustedOrigins[i] {
+					w.Header().Set("Access-Control-Allow-Origin", origin)
+
+					// Check if the request has the HTTP method OPTIONS and contains the
+					// "Access-Control-Request-Method" header. If it does, then we treat
+					// it as a preflight request
+					if r.Method == http.MethodOptions && r.Header.Get("Access-Control-Request-Method") != "" {
+						// Set the necessary preflight response headers
+						w.Header().Set("Access-Control-Allow-Methods", "OPTIONS, PUT, PATCH, DELETE")
+						w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
+						w.WriteHeader(http.StatusOK)
+						return
+					}
+					
+					break
+				}
+			}
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
