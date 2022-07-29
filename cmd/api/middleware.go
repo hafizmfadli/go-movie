@@ -4,7 +4,6 @@ import (
 	"errors"
 	"expvar"
 	"fmt"
-	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -14,6 +13,7 @@ import (
 	"github.com/felixge/httpsnoop"
 	"github.com/hafizmfadli/go-movie/internal/data"
 	"github.com/hafizmfadli/go-movie/internal/validator"
+	"github.com/tomasen/realip"
 	"golang.org/x/time/rate"
 )
 
@@ -39,44 +39,44 @@ func (app *application) recoverPanic(next http.Handler) http.Handler {
 }
 
 // rateLimitGlobal middleware will limit number of request from all client (global).
-func (app *application) rateLimitGlobal(next http.Handler) http.Handler {
-	// Initialize a new rate limiter which allows an average of 2 request per second,
-	// with a maximum of 4 requests in a single 'burst'
-	limiter := rate.NewLimiter(2, 4)
+// func (app *application) rateLimitGlobal(next http.Handler) http.Handler {
+// 	// Initialize a new rate limiter which allows an average of 2 request per second,
+// 	// with a maximum of 4 requests in a single 'burst'
+// 	limiter := rate.NewLimiter(2, 4)
 
-	// The function we are returning is a closure, which 'closes over' the limiter
-	// variable.
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 	// The function we are returning is a closure, which 'closes over' the limiter
+// 	// variable.
+// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		// Call limiter.Allow() to see if the request is permitted, and if it's not,
-		// then we call the rateLimitExceededResponse() helper to return a 429 Too Many
-		// Request response
-		if !limiter.Allow() {
-			app.rateLimitExceededResponse(w, r)
-			return
-		}
+// 		// Call limiter.Allow() to see if the request is permitted, and if it's not,
+// 		// then we call the rateLimitExceededResponse() helper to return a 429 Too Many
+// 		// Request response
+// 		if !limiter.Allow() {
+// 			app.rateLimitExceededResponse(w, r)
+// 			return
+// 		}
 
-		next.ServeHTTP(w, r)
-	})
-}
+// 		next.ServeHTTP(w, r)
+// 	})
+// }
 
 // rateLimitIP middleware will limit number of request for specific IP address.
 // This rate limiter can configurable at runtime using command line flag.
 func (app *application) rateLimitIP(next http.Handler) http.Handler {
-	
+
 	type client struct {
-		limiter *rate.Limiter
+		limiter  *rate.Limiter
 		lastSeen time.Time
 	}
-	
+
 	var (
-		mu sync.Mutex
+		mu      sync.Mutex
 		clients = make(map[string]*client)
 	)
 
 	// Launch a background goroutine which removes old entries from the clients map
 	// once every minute.
-	go func(){
+	go func() {
 		for {
 			time.Sleep(time.Minute)
 
@@ -87,7 +87,7 @@ func (app *application) rateLimitIP(next http.Handler) http.Handler {
 			// Loop through all clients. If they haven't been seen within the last three
 			// minutes, delete the corresponding entry from the map.
 			for ip, client := range clients {
-				if time.Since(client.lastSeen) > 3 * time.Minute {
+				if time.Since(client.lastSeen) > 3*time.Minute {
 					delete(clients, ip)
 				}
 			}
@@ -99,12 +99,18 @@ func (app *application) rateLimitIP(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		if app.config.limiter.enabled {
-			// Extract the client's IP address from the request.
-			ip, _, err := net.SplitHostPort(r.RemoteAddr)
-			if err != nil {
-				app.serverErrorResponse(w, r, err)
-				return
-			}
+			// Extract the client's IP address from the request using realip package.
+			// This package retrieves the client IP address from any X-Forwarded-For or 
+			// X-Real-IP headers, failling backe to use r.RemoteAddre of neither of them
+			// are present. This package is used because we're going to deploy our API
+			// application to the internet with Caddy as a reverse-proxy in-front of it.
+			// This means that, as far as our API is concerned, all the requests it receives
+			// will be coming from a single IP address (the on running the Caddy instance).
+			// I turn, that will cause problems for our rate limiter middleware which limits
+			// access based on IP address. Fortunately, like most other reverse proxies, Caddy
+			// adds an X-Forwared-For header to each request. This header will contain the real
+			// IP address for the client.
+			ip := realip.FromRequest(r)
 
 			mu.Lock()
 
@@ -112,7 +118,7 @@ func (app *application) rateLimitIP(next http.Handler) http.Handler {
 			// initialize a new rate limiter and add the IP address and limiter to the map
 			if _, found := clients[ip]; !found {
 				clients[ip] = &client{
-					limiter: 	rate.NewLimiter(rate.Limit(app.config.limiter.rps), app.config.limiter.burst),
+					limiter: rate.NewLimiter(rate.Limit(app.config.limiter.rps), app.config.limiter.burst),
 				}
 			}
 
@@ -130,7 +136,7 @@ func (app *application) rateLimitIP(next http.Handler) http.Handler {
 			// middleware have also returned.
 			mu.Unlock()
 		}
-		next.ServeHTTP(w, r)	
+		next.ServeHTTP(w, r)
 	})
 }
 
@@ -260,16 +266,16 @@ func (app *application) enableCORS(next http.Handler) http.Handler {
 		// the request to proceed as normal without setting an "Access-Control-Allow-Origin"
 		// response header. In turn, that means any cross-origin response will be blocked
 		// by a web browser.
-		// 
+		//
 		// A side effect of this that the response wil be different depending on the origin that
 		// the request is coming from. Specifically, the value of the "Access-Control-Allow-Origin"
 		// header may be different in the response, or it may not even be included at all.
-		// 
+		//
 		// So because of this we should make sure to always set a Vary: Origin response header to
 		// warn any caches that the response may be different. This is actually really important, and it
-		// can be the cause of subtle bugs like this (https://textslashplain.com/2018/08/02/cors-and-vary/) 
+		// can be the cause of subtle bugs like this (https://textslashplain.com/2018/08/02/cors-and-vary/)
 		// one if you forget to do it. As a rule of thumb:
-		// 
+		//
 		// -------------------------------------------------------------------------------------------
 		// If your code makes a decision about what to return based on the content of a request header,
 		// you should include that header name in your Vary response header — even if the request
@@ -298,7 +304,7 @@ func (app *application) enableCORS(next http.Handler) http.Handler {
 						w.WriteHeader(http.StatusOK)
 						return
 					}
-					
+
 					break
 				}
 			}
@@ -332,6 +338,6 @@ func (app *application) metrics(next http.Handler) http.Handler {
 
 		// Increment the count for the given status code by 1
 		totalResponsesSentByStatus.Add(strconv.Itoa(metrics.Code), 1)
-		
+
 	})
 }
