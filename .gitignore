@@ -11,6 +11,7 @@
 *.dll
 *.so
 *.dylib
+bin/
 
 # Test binary, built with `go test -c`
 *.test
@@ -56,3 +57,6 @@ go.work
 # End of https://www.toptal.com/developers/gitignore/api/go,visualstudiocode
 
 db-data/*
+
+#environtment file
+.envrc
