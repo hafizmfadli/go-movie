@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	ScopeActivation = "activation"
+	ScopeActivation     = "activation"
 	ScopeAuthentication = "authentication"
 )
 
@@ -28,7 +28,7 @@ func generateToken(userID int64, ttl time.Duration, scope string) (*Token, error
 	token := &Token{
 		UserID: userID,
 		Expiry: time.Now().Add(ttl),
-		Scope: scope,
+		Scope:  scope,
 	}
 
 	randomBytes := make([]byte, 16)
@@ -43,9 +43,9 @@ func generateToken(userID int64, ttl time.Duration, scope string) (*Token, error
 	// Encode the byte slice to a base-32-encoded string and assign it to the token
 	// Plaintext field. This will be the token string that we send to the user in their
 	// welcome email. They will look similar to this :
-	// 
+	//
 	// Y3QMGX3PJ3WLRL2YRTQGQ6KRHU
-	// 
+	//
 	// Not that by default base-32 strings may be padded at the end with the =
 	// character. We don't need this padding character for the purpose of our tokens, so
 	// we use the WithPadding(base32.NoPadding) method in the line below to omit them.
@@ -67,14 +67,14 @@ type TokenModel struct {
 }
 
 // Insert adds the data for specific token to the tokens table
-func (m TokenModel) Insert(token *Token) (error) {
+func (m TokenModel) Insert(token *Token) error {
 	query := `
 	INSERT INTO tokens (hash, user_id, expiry, scope)
 	VALUES ($1, $2, $3, $4)
 	`
 	args := []interface{}{token.Hash, token.UserID, token.Expiry, token.Scope}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	_, err := m.DB.ExecContext(ctx, query, args...)
@@ -87,7 +87,7 @@ func (m TokenModel) DeleteAllForUser(scope string, userID int64) error {
 	DELETE FROM tokens
 	WHERE scope = $1 AND user_id = $2`
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	_, err := m.DB.ExecContext(ctx, query, scope, userID)

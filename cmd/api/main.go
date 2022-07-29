@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"expvar"
 	"flag"
+	"fmt"
 	"os"
 	"runtime"
 	"strings"
@@ -17,8 +18,15 @@ import (
 	_ "github.com/lib/pq"
 )
 
-// Application version number
-const version = "1.0.0"
+var (
+	// Application version number
+	version string
+
+	// buildTime variable to hold the executab;e binary build time. Note that this
+	// must be a string type, as the -X linker flag will only work with string variables.
+	buildTime string
+)
+
 
 // config struct hold all the configuration settings for out application.
 type config struct {
@@ -30,29 +38,29 @@ type config struct {
 	env string
 
 	// db struct field hold the configuration settings for our database connection pool.
-	db struct  {
-		dsn string
+	db struct {
+		dsn          string
 		maxOpenConns int
 		maxIdleConns int
-		maxIdleTime string
+		maxIdleTime  string
 	}
 
 	// limiter struct containing fields for the requests per second and burst
 	// values, and a boolean field which we can use to enable/disable rate limiting
 	// altogether
 	limiter struct {
-		rps float64
-		burst int
+		rps     float64
+		burst   int
 		enabled bool
 	}
 
 	// smtp struct hold smtp configuration
 	smtp struct {
-		host string
-		port int
+		host     string
+		port     int
 		username string
 		password string
-		sender string
+		sender   string
 	}
 
 	// cors struct store list of trusted origin
@@ -71,14 +79,14 @@ type application struct {
 	wg sync.WaitGroup
 }
 
-func main(){
+func main() {
 
 	var cfg config
 
 	// Read the value of the port and enc command-line flags into the config struct.
 	flag.IntVar(&cfg.port, "port", 4000, "API server port")
 	flag.StringVar(&cfg.env, "env", "development", "Environment (development|staging|production)")
-	flag.StringVar(&cfg.db.dsn, "db-dsn", os.Getenv("NETFLIX_DB_DSN"), "PostgreSQL DSN")
+	flag.StringVar(&cfg.db.dsn, "db-dsn", "", "PostgreSQL DSN")
 	flag.IntVar(&cfg.db.maxOpenConns, "db-max-open-conns", 25, "PostgreSQL max open connections")
 	flag.IntVar(&cfg.db.maxIdleConns, "db-max-idle-conns", 25, "PostgreSQL max idle connections")
 	flag.StringVar(&cfg.db.maxIdleTime, "db-max-idle-time", "15m", "PostgreSQL max connection idle time")
@@ -95,7 +103,15 @@ func main(){
 		return nil
 	})
 
+	displayVersion := flag.Bool("version", false, "Display version and exit")
+
 	flag.Parse()
+
+	if *displayVersion {
+		fmt.Printf("Version:\t%s\n", version)
+		fmt.Printf("Build time:\t%s\n", buildTime)
+		os.Exit(0)
+	}
 
 	// Initialize a new jsonlog.Logger kwhich writes any messages *at or above* the INFO
 	// severity level to the standard out stream
@@ -161,7 +177,7 @@ func openDB(cfg config) (*sql.DB, error) {
 	// Set the maximum idle timeout
 	db.SetConnMaxIdleTime(duration)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	// establish a new connection to the database. If the connection couldn't be
@@ -172,4 +188,4 @@ func openDB(cfg config) (*sql.DB, error) {
 	}
 
 	return db, nil
-}	
+}

@@ -7,10 +7,10 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_PASSWORD: <yourpassword>
+      POSTGRES_PASSWORD: secret
       POSTGRES_DB: netflix
     volumes:
-      - ./db-data/postgres/:/var/lib/postgresql/data/
+      - ~/docker-volume/db-data/postgres/:/var/lib/postgresql/data/
   
   mailhog:
     image: 'mailhog/mailhog:latest'

@@ -73,7 +73,7 @@ func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst int
 		// which includes the location of the problem
 		case errors.As(err, &syntaxError):
 			return fmt.Errorf("body contains badly-formed JSON (at character %d)", syntaxError.Offset)
-		
+
 		// In some circumtances Decode() may also return an io.ErrUnexpectedEOF error
 		// for syntax error in the JSON. So we check for this using errors.Is() and
 		// return a generic error message.
@@ -89,35 +89,35 @@ func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst int
 				return fmt.Errorf("body contains incorrect JSON type for field %q", unmarshalTypeError.Field)
 			}
 			return fmt.Errorf("body contains incorrect JSON type (at character %d)", unmarshalTypeError.Offset)
-	
+
 		// io.EOF error will be returned by Decode() if the request body is empty. We
 		// check for this with errors.Is() and return a plain-english error message
 		// instead
 		case errors.Is(err, io.EOF):
 			return errors.New("body must not be empty")
-		
+
 		// If the JSON contains a field which cannot be mapped to the target destination
 		// then Decode() will now return an error message in the format "json: unknown field "<name>"".
 		// We check for this, extract the field name from the error, and interpolate it into our custom error message.
 		case strings.HasPrefix(err.Error(), "json: unknown field"):
 			fieldName := strings.TrimPrefix(err.Error(), "json: unknown field")
 			return fmt.Errorf("body contains unknown key %s", fieldName)
-		
+
 		// If the request body exceeds 1MB in size the decode will now fail with the
 		// error "http: request body too large".
 		case err.Error() == "http: request body too large":
 			return fmt.Errorf("body must not be larger than %d bytes", maxBytes)
-		
+
 		// A json.InvalidUnmarshalError error will be returned if we pass a non-nil
 		// pointer to Decode(). We catch this and panic, rather than returning an error
 		// to our handler.
 		case errors.As(err, &invalidUnmarshalError):
 			panic(err)
-		
+
 		// For anything else, return the error message as-is
 		default:
 			return err
-		
+
 		}
 	}
 
@@ -161,7 +161,7 @@ func (app *application) readCSV(qs url.Values, key string, defaultValue []string
 // readInt helper reads a string value from the query string and converts it to an integer
 // before returning. If no matching key could be found it returns the provided default value.
 // If the value couldn't be converted to an integer, then we record an error message in the
-// provided Validator instance. 
+// provided Validator instance.
 func (app *application) readInt(qs url.Values, key string, defaultValue int, v *validator.Validator) int {
 	s := qs.Get(key)
 
@@ -189,16 +189,16 @@ func (app *application) background(fn func()) {
 	app.wg.Add(1)
 
 	// Launch a background goroutine
-	go func ()  {
+	go func() {
 		defer app.wg.Done()
 
 		// Recover any panic
-		defer func ()  {
+		defer func() {
 			if err := recover(); err != nil {
 				app.logger.PrintError(fmt.Errorf("%s", err), nil)
 			}
 		}()
-		
+
 		// Execute the arbitrary function that we passed as the parameter
 		fn()
 	}()

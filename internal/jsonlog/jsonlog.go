@@ -20,7 +20,7 @@ const (
 )
 
 // String return human friendly string for the severity level
-func(l Level) String() string {
+func (l Level) String() string {
 	switch l {
 	case LevelInfo:
 		return "INFO"
@@ -37,16 +37,16 @@ func(l Level) String() string {
 // will be written to, the minimun severity level that log entries
 // will be written for, plus a mutex for coordinating writes.
 type Logger struct {
-	out io.Writer
+	out      io.Writer
 	minLevel Level
-	mu sync.Mutex
+	mu       sync.Mutex
 }
 
 // NewLogger return a new Logger instance which writes log entries at or above
 // a minimum severity level to a specific output destination
 func NewLogger(out io.Writer, minLevel Level) *Logger {
 	return &Logger{
-		out: out,
+		out:      out,
 		minLevel: minLevel,
 	}
 }
@@ -84,9 +84,9 @@ func (l *Logger) print(level Level, message string, properties map[string]string
 		Properties map[string]string `json:"properties,omitempty"`
 		Trace      string            `json:"trace,omitempty"`
 	}{
-		Level: level.String(),
-		Time: time.Now().UTC().Format(time.RFC3339),
-		Message: message,
+		Level:      level.String(),
+		Time:       time.Now().UTC().Format(time.RFC3339),
+		Message:    message,
 		Properties: properties,
 	}
 
@@ -94,7 +94,7 @@ func (l *Logger) print(level Level, message string, properties map[string]string
 	if level >= LevelError {
 		aux.Trace = string(debug.Stack())
 	}
-	
+
 	// variable for holding the actual log entry text
 	var line []byte
 

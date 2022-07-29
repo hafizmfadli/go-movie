@@ -11,8 +11,8 @@ import (
 
 func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
-		Name string
-		Email string
+		Name     string
+		Email    string
 		Password string
 	}
 
@@ -23,8 +23,8 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	user := data.User{
-		Name: input.Name,
-		Email: input.Email,
+		Name:      input.Name,
+		Email:     input.Email,
 		Activated: false,
 	}
 
@@ -40,7 +40,7 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		app.failedValidationResponse(w, r, v.Errors)
 		return
 	}
-	
+
 	err = app.models.Users.Insert(&user)
 	if err != nil {
 		switch {
@@ -60,18 +60,18 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	token, err := app.models.Tokens.New(user.ID, 3 * 24 * time.Hour, data.ScopeActivation)
+	token, err := app.models.Tokens.New(user.ID, 3*24*time.Hour, data.ScopeActivation)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
 	}
-	
+
 	app.background(func() {
 
 		// map to act as a 'holding structure' for the data
 		data := map[string]interface{}{
 			"activationToken": token.Plaintext,
-			"userID": user.ID,
+			"userID":          user.ID,
 		}
 
 		err = app.mailer.Send(user.Email, "user_welcome.tmpl", data)
@@ -102,7 +102,7 @@ func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Reque
 		app.failedValidationResponse(w, r, v.Errors)
 		return
 	}
-	
+
 	// Retrieve the details of the user associated with the token using the
 	// GetForToken() method. If no matching record is found, then we let the client
 	// know that the token they provided is not valid

@@ -6,7 +6,7 @@ import "net/http"
 func (app *application) logError(r *http.Request, err error) {
 	app.logger.PrintError(err, map[string]string{
 		"request_method": r.Method,
-		"request_url": r.URL.String(),
+		"request_url":    r.URL.String(),
 	})
 }
 
@@ -23,7 +23,7 @@ func (app *application) errorResponse(w http.ResponseWriter, r *http.Request, st
 	}
 }
 
-// serverErrorResponse will be used to send a 500 Internal Server Error status code with JSON formatted 
+// serverErrorResponse will be used to send a 500 Internal Server Error status code with JSON formatted
 func (app *application) serverErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
 	app.logError(r, err)
 
