@@ -34,7 +34,7 @@ func (m PermissionModel) GetAllForUser(userID int64) (Permissions, error) {
 	INNER JOIN users ON users_permissions.user_id = users.id
 	WHERE users.id = $1
 	`
-	ctx, cancel := context.WithTimeout(context.Background(), 3 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	rows, err := m.DB.QueryContext(ctx, query, userID)
@@ -64,15 +64,15 @@ func (m PermissionModel) GetAllForUser(userID int64) (Permissions, error) {
 }
 
 // AddForUser add the provided codes for a specific user.
-func (m PermissionModel) AddForUser(userID int64, code...string) error {
+func (m PermissionModel) AddForUser(userID int64, code ...string) error {
 	query := `
 	INSERT INTO users_permissions
 	SELECT $1, permissions.id FROM permissions WHERE permissions.code = ANY($2)`
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	_, err := m.DB.ExecContext(ctx, query, userID, pq.Array(code))
-	
+
 	return err
-} 
+}

@@ -14,10 +14,10 @@ import (
 // serve initializes and starts out http.Server
 func (app *application) serve() error {
 	srv := &http.Server{
-		Addr: fmt.Sprintf(":%d", app.config.port),
-		Handler: app.routes(),
-		IdleTimeout: time.Minute,
-		ReadTimeout: 10 * time.Second,
+		Addr:         fmt.Sprintf(":%d", app.config.port),
+		Handler:      app.routes(),
+		IdleTimeout:  time.Minute,
+		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
 	}
 
@@ -25,14 +25,14 @@ func (app *application) serve() error {
 	// by the graceful Shutdown() function
 	shutdownError := make(chan error)
 
-	go func(){
+	go func() {
 		// quit channel carries os.Signal values
 		quit := make(chan os.Signal, 1)
 
 		// Use signal.Notify() to listen for incoming SIGINT and SIGTERM signals
 		// and relay them to the quit channel.
 		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-		
+
 		// Read the signal from the quit channel. This code will block until a signal
 		// is received
 		s := <-quit
@@ -41,7 +41,7 @@ func (app *application) serve() error {
 			"signal": s.String(),
 		})
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
 		// Shutdown() may return an error if graceful shutdown was failed
@@ -64,7 +64,7 @@ func (app *application) serve() error {
 
 	app.logger.PrintInfo("starting server", map[string]string{
 		"addr": srv.Addr,
-		"env": app.config.env,
+		"env":  app.config.env,
 	})
 
 	// Calling Shutdown() on our server will cause ListenAndServer() to immediately

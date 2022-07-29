@@ -26,10 +26,10 @@ func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	movie := &data.Movie{
-		Title: input.Title,
-		Year: input.Year,
+		Title:   input.Title,
+		Year:    input.Year,
 		Runtime: input.Runtime,
-		Genres: input.Genres,
+		Genres:  input.Genres,
 	}
 
 	v := validator.New()
@@ -38,7 +38,7 @@ func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Reques
 		app.failedValidationResponse(w, r, v.Errors)
 		return
 	}
-	
+
 	err = app.models.Movies.Insert(movie)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
@@ -102,9 +102,9 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	var input struct {
-		Title   *string   `json:"title"`
-		Year    *int32    `json:"year"`
-		Runtime *int32    `json:"runtime"`
+		Title   *string  `json:"title"`
+		Year    *int32   `json:"year"`
+		Runtime *int32   `json:"runtime"`
 		Genres  []string `json:"genres"`
 	}
 
@@ -135,7 +135,6 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 	if input.Genres != nil {
 		movie.Genres = input.Genres
 	}
-
 
 	v := validator.New()
 
@@ -188,7 +187,7 @@ func (app *application) deleteMovieHandler(w http.ResponseWriter, r *http.Reques
 // listMovieHandler for the "GET /v1/movies" endpoint.
 func (app *application) listMovieHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
-		Title string
+		Title  string
 		Genres []string
 		data.Filters
 	}
@@ -202,8 +201,8 @@ func (app *application) listMovieHandler(w http.ResponseWriter, r *http.Request)
 	input.Filters.Page = app.readInt(qs, "page", 1, v)
 	input.Filters.PageSize = app.readInt(qs, "page_size", 20, v)
 	input.Filters.Sort = app.readString(qs, "sort", "id")
-	input.Filters.SortSafelist = []string{"id", "title", "year", "runtime", "-id", "-title", 
-	"-year", "-runtime"}
+	input.Filters.SortSafelist = []string{"id", "title", "year", "runtime", "-id", "-title",
+		"-year", "-runtime"}
 
 	if data.ValidateFilters(v, input.Filters); !v.Valid() {
 		app.failedValidationResponse(w, r, v.Errors)

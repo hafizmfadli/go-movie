@@ -38,7 +38,7 @@ func (u *User) IsAnonymous() bool {
 // the struct at all, versus a plaintext password which is the empty string "".
 type password struct {
 	plaintext *string
-	hash []byte
+	hash      []byte
 }
 
 // Set calculates the bcrypt hash of plaintext password, and stores both
@@ -110,7 +110,7 @@ func (m UserModel) Insert(user *User) error {
 	`
 	args := []interface{}{user.Name, user.Email, user.Password.hash, user.Activated}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	err := m.DB.QueryRowContext(ctx, query, args...).Scan(&user.ID, &user.CreatedAt, &user.Version)
@@ -135,7 +135,7 @@ func (m UserModel) GetByEmail(email string) (*User, error) {
 	`
 	var user User
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	err := m.DB.QueryRowContext(ctx, query, email).Scan(
@@ -162,7 +162,7 @@ func (m UserModel) GetByEmail(email string) (*User, error) {
 
 // Update specific user
 func (m UserModel) Update(user *User) error {
-	
+
 	// Check against the version field to help prevent any race conditions
 	query := `
 	UPDATE users
@@ -171,27 +171,27 @@ func (m UserModel) Update(user *User) error {
 	RETURNING version`
 
 	args := []interface{}{
-		user.Name, 
-		user.Email, 
-		user.Password.hash, 
-		user.Activated, 
-		user.ID, 
+		user.Name,
+		user.Email,
+		user.Password.hash,
+		user.Activated,
+		user.ID,
 		user.Version,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	err := m.DB.QueryRowContext(ctx, query, args...).Scan(&user.Version)
 
 	if err != nil {
 		switch {
-			case err.Error() == `pq: duplicate key value violates unique constraint "users_email_key"`:
-				return ErrDuplicateEmail
-			case errors.Is(err, sql.ErrNoRows):
-				return ErrRecordNotFound
-			default:
-				return err
+		case err.Error() == `pq: duplicate key value violates unique constraint "users_email_key"`:
+			return ErrDuplicateEmail
+		case errors.Is(err, sql.ErrNoRows):
+			return ErrRecordNotFound
+		default:
+			return err
 		}
 	}
 
@@ -215,7 +215,7 @@ func (m UserModel) GetForToken(tokenScope, tokenPlaintext string) (*User, error)
 
 	args := []interface{}{tokenHash[:], tokenScope, time.Now()}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	err := m.DB.QueryRowContext(ctx, query, args...).Scan(

@@ -10,7 +10,7 @@ import (
 func (app *application) routes() http.Handler {
 	// Initialize a new httprouter instance.
 	router := httprouter.New()
-	
+
 	// set our own custom error handler for httprouter.NotFound
 	router.NotFound = http.HandlerFunc(app.notFoundResponse)
 

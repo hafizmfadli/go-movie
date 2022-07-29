@@ -13,19 +13,19 @@ import (
 
 type Movie struct {
 	// Unique ID
-	ID        int64     `json:"id"`
+	ID int64 `json:"id"`
 	// Timestamp for when the movie is added to our database
 	CreatedAt time.Time `json:"-"`
 	// Movie title
-	Title     string    `json:"title"`
+	Title string `json:"title"`
 	// Movie release year
-	Year      int32     `json:"year,omitempty"`   
-	// Movie runtime (in minutes)    
-	Runtime   int32     `json:"runtime,omitempty"`
+	Year int32 `json:"year,omitempty"`
+	// Movie runtime (in minutes)
+	Runtime int32 `json:"runtime,omitempty"`
 	// Slice of genres for the movie (romance, comedy, etc.)
-	Genres    []string  `json:"genres,omitempty"`
+	Genres []string `json:"genres,omitempty"`
 	// Version number starts at 1 and will be incremented each time the movie is updated
-	Version   int32     `json:"version"`
+	Version int32 `json:"version"`
 }
 
 func ValidateMovie(v *validator.Validator, movie *Movie) {
@@ -48,14 +48,14 @@ type MovieModel struct {
 
 // Insert inserting a new record in the movies table
 func (m MovieModel) Insert(movie *Movie) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 3 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	query := `INSERT INTO movies (title, year, runtime, genres) VALUES ($1, $2, $3, $4)
 	RETURNING id, created_at, version`
 
 	args := []interface{}{movie.Title, movie.Year, movie.Runtime, pq.Array(movie.Genres)}
-	
+
 	return m.DB.QueryRowContext(ctx, query, args...).Scan(&movie.ID, &movie.CreatedAt, &movie.Version)
 }
 
@@ -71,11 +71,11 @@ func (m MovieModel) Get(id int64) (*Movie, error) {
 
 	movie := Movie{}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	err := m.DB.QueryRowContext(ctx, query, id).Scan(&movie.ID, &movie.CreatedAt, &movie.Title, &movie.Year, 
-	&movie.Runtime, pq.Array(&movie.Genres), &movie.Version)
+	err := m.DB.QueryRowContext(ctx, query, id).Scan(&movie.ID, &movie.CreatedAt, &movie.Title, &movie.Year,
+		&movie.Runtime, pq.Array(&movie.Genres), &movie.Version)
 
 	if err != nil {
 		switch {
@@ -90,7 +90,7 @@ func (m MovieModel) Get(id int64) (*Movie, error) {
 }
 
 // Update updating a specific record in the movies table
-func (m MovieModel) Update(movie *Movie) (error) {
+func (m MovieModel) Update(movie *Movie) error {
 	query := `UPDATE movies 
 	SET title = $1, year = $2, runtime = $3, genres = $4, version = version + 1
 	WHERE id = $5 AND version = $6
@@ -98,7 +98,7 @@ func (m MovieModel) Update(movie *Movie) (error) {
 
 	args := []interface{}{movie.Title, movie.Year, movie.Runtime, pq.Array(movie.Genres), movie.ID, movie.Version}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	err := m.DB.QueryRowContext(ctx, query, args...).Scan(&movie.Version)
@@ -123,7 +123,7 @@ func (m MovieModel) Delete(id int64) error {
 	}
 
 	query := `DELETE FROM movies WHERE id = $1`
-	ctx, cancel := context.WithTimeout(context.Background(), 3 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	result, err := m.DB.ExecContext(ctx, query, id)
 	if err != nil {
@@ -138,12 +138,12 @@ func (m MovieModel) Delete(id int64) error {
 	if rowsAffected == 0 {
 		return ErrRecordNotFound
 	}
-	
+
 	return nil
 }
 
 func (m MovieModel) GetAll(title string, genres []string, filters Filters) ([]*Movie, Metadata, error) {
-	
+
 	// notice that we also include a secondary sort on the movie ID to ensure a
 	// consistent ordering.
 	query := fmt.Sprintf(`
@@ -156,7 +156,7 @@ func (m MovieModel) GetAll(title string, genres []string, filters Filters) ([]*M
 
 	args := []interface{}{title, pq.Array(genres), filters.limit(), filters.offset()}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	rows, err := m.DB.QueryContext(ctx, query, args...)
@@ -173,18 +173,18 @@ func (m MovieModel) GetAll(title string, genres []string, filters Filters) ([]*M
 
 		err = rows.Scan(
 			&totalRecords,
-			&m.ID, 
-			&m.CreatedAt, 
-			&m.Title, 
-			&m.Year, 
-			&m.Runtime, 
-			pq.Array(&m.Genres), 
+			&m.ID,
+			&m.CreatedAt,
+			&m.Title,
+			&m.Year,
+			&m.Runtime,
+			pq.Array(&m.Genres),
 			&m.Version)
-		
+
 		if err != nil {
 			return nil, Metadata{}, err
 		}
-		
+
 		movies = append(movies, &m)
 	}
 
