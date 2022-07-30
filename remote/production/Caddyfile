@@ -1,0 +1,10 @@
+# Set the email address that should be used to contact you if there is a problem with
+# your TLS certificates.
+{
+  email lshafizmf1st@gmail.com
+}
+
+http://139.162.53.66 {
+  respond /debug/* "Not Permitted" 403
+  reverse_proxy localhost:4000
+}
