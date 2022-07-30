@@ -78,3 +78,30 @@ build/api:
 	@echo 'Building cmd/api...'
 	go build -ldflags=${linker_flags} -o=./bin/api ./cmd/api
 	GOOS=linux GOARCH=amd64 go build -ldflags=${linker_flags} -o=./bin/linux_amd64/api ./cmd/api
+
+# ==================================================================================== #
+# PRODUCTION
+# ==================================================================================== #
+
+production_host_ip = '139.162.53.66'
+
+## production/connect: connect to the production server
+.PHONY: production/connect
+production/connect:
+	ssh netflix@${production_host_ip}
+
+## production/deploy/api: deploy the api to production
+.PHONY: production/deploy/api
+production/deploy/api:
+	rsync -P ./bin/linux_amd64/api netflix@${production_host_ip}:~
+	rsync -rP --delete ./migrations netflix@${production_host_ip}:~
+	rsync -P ./remote/production/api.service netflix@${production_host_ip}:~
+	rsync -P ./remote/production/Caddyfile netflix@${production_host_ip}:~
+	ssh -t netflix@${production_host_ip} '\
+		migrate -path ~/migrations -database $$NETFLIX_DB_DSN up \
+		&& sudo mv ~/api.service /etc/systemd/system/ \
+		&& sudo systemctl enable api \
+		&& sudo systemctl restart api \
+		&& sudo mv ~/Caddyfile /etc/caddy/ \
+		&& sudo systemctl reload caddy \
+		'
